@@ -71,15 +71,14 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 
 entity elevator_controller_fsm is
-    Port ( i_clk     : in  STD_LOGIC;
-           i_reset   : in  STD_LOGIC;
-           i_stop    : in  STD_LOGIC;
-           i_up_down : in  STD_LOGIC;
-           o_floor   : out STD_LOGIC_VECTOR (3 downto 0)		   
-		 );
+    Port (i_clk     : in  STD_LOGIC;
+          i_reset   : in  STD_LOGIC;
+          i_stop    : in  STD_LOGIC;
+          i_up_down : in  STD_LOGIC;
+          o_floor   : out STD_LOGIC_VECTOR (3 downto 0)		   
+		     );
 end elevator_controller_fsm;
 
- 
 architecture Behavioral of elevator_controller_fsm is
 
     -- Below you create a new variable type! You also define what values that 
@@ -88,22 +87,45 @@ architecture Behavioral of elevator_controller_fsm is
 	type sm_floor is (s_floor1, s_floor2, s_floor3, s_floor4);
 	
 	-- Here you create variables that can take on the values defined above. Neat!	
-	signal f_Q, f_Q_next: sm_floor;
+	signal f_fl, f_fl_next: sm_floor; -- renamed f_Q and f_Q_next
 
 begin
 
 	-- CONCURRENT STATEMENTS ------------------------------------------------------------------------------
 	
 	-- Next State Logic
-  
-	-- Output logic
+  f_fl_next <= f_fl when i_stop = '1' -- stop
+  -- up
+  else     s_floor2 when (i_up_down = '1' and f_fl = s_floor1) -- press up: to fl2 from fl1
+  else     s_floor3 when (i_up_down = '1' and f_fl = s_floor2) -- press up: to fl3 from fl2
+  else     s_floor4 when (i_up_down = '1' and f_fl = s_floor3) -- press up: to fl4 from fl3
+  -- down
+  else     s_floor3 when (i_up_down = '0' and f_fl = s_floor4) -- press down: to fl3 from fl4
+  else     s_floor2 when (i_up_down = '0' and f_fl = s_floor3) -- press down: to fl2 from fl3
+  else     s_floor1 when (i_up_down = '0' and f_fl = s_floor2) -- press down: to fl1 from fl2
 
+  else         f_fl;  -- like when fl1 and down pressed or when fl4 and up pressed
+	
+	-- Output logic
+  with f_fl select
+    o_floor <= x"1" when s_floor1,
+               x"2" when s_floor2,
+               x"3" when s_floor3,
+               x"4" when s_floor4,
+               x"0" when others; -- error
 	-------------------------------------------------------------------------------------------------------
 	
 	-- PROCESSES ------------------------------------------------------------------------------------------	
 	
 	-- State register ------------
-	
+	register_proc : process (i_clk, i_reset)
+	begin
+    if i_reset = '1' then
+       f_fl <= s_floor2;  -- reset state is fl2
+    elsif (rising_edge(i_clk)) then
+       f_fl <= f_fl_next; -- to next state
+    end if;
+  end process register_proc;
 	
 	-------------------------------------------------------------------------------------------------------
 	
